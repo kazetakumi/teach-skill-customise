@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gradient descent — v4 style reference</title>
+<style>
+  :root{
+    --ink:#16191d; --muted:#5b6470; --line:#e7e3da; --bg:#fbfaf7;
+    --accent:#b4531f; --bad:#a8443a; --good:#5e7d4f;
+    --code-bg:#1d2127; --code-ink:#e6e1d6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font:18px/1.7 "Iowan Old Style","Palatino Linotype",Georgia,serif}
+  .wrap{max-width:680px; margin:0 auto; padding:72px 28px 120px}
+  .eyebrow{font:600 12px/1 "Inter",system-ui,sans-serif; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:18px}
+  h1{font:600 42px/1.12 "Inter",system-ui,sans-serif; letter-spacing:-.02em; margin:0 0 18px}
+  .lede{font-size:21px; line-height:1.55; color:#333; margin:0 0 40px}
+  h2{font:600 15px/1.3 "Inter",system-ui,sans-serif; letter-spacing:.02em;
+    text-transform:uppercase; color:var(--muted); margin:48px 0 14px}
+  p{margin:18px 0}
+  code{font:14.5px/1 "SFMono-Regular",Menlo,Consolas,monospace; background:#f0ece2;
+    padding:2px 6px; border-radius:4px}
+  pre{background:var(--code-bg); color:var(--code-ink); border-radius:12px; padding:22px 24px;
+    overflow:auto; font:14px/1.7 "SFMono-Regular",Menlo,Consolas,monospace; margin:24px 0;
+    box-shadow:0 12px 30px -16px rgba(0,0,0,.5)}
+  pre .k{color:#ff9d7a} pre .c{color:#6f7681; font-style:italic} pre .n{color:#9cdcfe}
+  pre .hl{background:rgba(180,83,31,.32); border-radius:3px; padding:1px 4px}
+
+  /* predict — editorial aside, no card */
+  .predict{font-style:italic; color:#3a3f46; border-left:3px solid var(--accent);
+    padding:6px 0 6px 20px; margin:28px 0; font-size:18px}
+  .predict .lbl{display:block; font:600 11px/1 "Inter",system-ui,sans-serif; font-style:normal;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:8px}
+  .guess{color:#9aa0a6; text-decoration:line-through; text-decoration-color:#c9b8ad}
+
+  /* output — the real result, plain, marked by a quiet word + colour, no emoji */
+  .out{margin:22px 0; padding-left:20px; border-left:3px solid var(--line)}
+  .out.bad{border-left-color:var(--bad)} .out.good{border-left-color:var(--good)}
+  .out .nums{font:14.5px/1.6 "SFMono-Regular",Menlo,Consolas,monospace; color:var(--ink)}
+  .out .tag{font:600 11px/1 "Inter",system-ui,sans-serif; letter-spacing:.12em;
+    text-transform:uppercase; margin-right:10px}
+  .out.bad .tag{color:var(--bad)} .out.good .tag{color:var(--good)}
+  .out .say{display:block; font-style:italic; font-size:16px; color:#3a3f46; margin-top:8px}
+
+  .figure{margin:34px 0}
+  .figure svg{background:#fff; border:1px solid var(--line); border-radius:12px; display:block; margin:0 auto}
+  .cap{font:13px/1.5 "Inter",system-ui,sans-serif; color:var(--muted); margin-top:10px; text-align:center}
+
+  /* angle — the second-angle callout, new in v4. Quieter than .predict/.pull: muted
+     gray, not orange, so it never competes with the lesson's single pull-line insight. */
+  .angle{font-style:italic; color:#3a3f46; border-left:3px solid var(--muted);
+    padding:6px 0 6px 20px; margin:28px 0; font-size:16px}
+  .angle .lbl{display:block; font:600 11px/1 "Inter",system-ui,sans-serif; font-style:normal;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:8px}
+
+  .pull{font-family:"Inter",system-ui,sans-serif; font-size:15px; line-height:1.6;
+    border-left:3px solid var(--accent); padding:4px 0 4px 20px; margin:34px 0; color:#3a3f46}
+  .rule{border:0; border-top:1px solid var(--line); margin:44px 0}
+  .rebuild{background:#fff; border:1px solid var(--line); border-radius:14px; padding:24px 28px; margin:40px 0;
+    box-shadow:0 10px 24px -18px rgba(0,0,0,.25)}
+  .rebuild h2{margin-top:0}
+  .rebuild p{margin:6px 0; font-size:16px}
+  .foot{font:14px/1.6 Inter,system-ui,sans-serif; color:#5b6470}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Lesson 03 · Optimization</div>
+  <h1>Finding the bottom of a bowl</h1>
+  <p class="lede">We want the <code>x</code> that makes <code>f(x)=x²</code> smallest. We know it's 0 — but let's make the machine <em>find</em> it, without ever telling it the answer.</p>
+
+  <h2>The dumbest idea that could work</h2>
+  <p>Stand at some <code>x</code>, feel which way is downhill, step that way. "Downhill" is just the slope — and the slope of <code>x²</code> is <code>2x</code>, which we write by hand rather than import. Start at <code>x=3</code> with a step size of <code>1.0</code>:</p>
+
+<pre><span class="k">def</span> slope(x): <span class="k">return</span> 2*<span class="n">x</span>      <span class="c"># derivative of x², by hand</span>
+
+x, lr = 3.0, <span class="hl">1.0</span>
+<span class="k">for</span> i <span class="k">in</span> range(6):
+    x = x - lr * slope(x)
+    print(round(x, 2))</pre>
+
+  <p class="predict">
+    <span class="lbl">Predict before you scroll</span>
+    The step is <code>x − 1.0·2x = −x</code>. So from 3 we go to… commit to an answer first.
+    <br><span class="guess">My guess: 3 → 2 → 1 → 0, slowing near the bottom.</span>
+  </p>
+
+  <div class="out bad">
+    <div><span class="tag">Result</span><span class="nums">3.0 → -3.0 → 3.0 → -3.0 → 3.0 → -3.0</span></div>
+    <span class="say">It doesn't descend at all — it bounces between 3 and −3 forever.</span>
+  </div>
+
+  <p>The guess was wrong, and the wrongness <em>is</em> the lesson. The step <code>−x</code> doesn't shrink <code>x</code>; it flips its sign. We overshoot the bottom by exactly the amount we started with, every single time. Only one number controls how big that step is — so change <strong>that one thing</strong>, nothing else, and run it again.</p>
+
+<pre>x, lr = 3.0, <span class="hl">0.1</span>          <span class="c"># the one change</span>
+<span class="k">for</span> i <span class="k">in</span> range(6):
+    x = x - lr * slope(x)
+    print(round(x, 2))</pre>
+
+  <div class="out good">
+    <div><span class="tag">Result</span><span class="nums">2.40 → 1.92 → 1.54 → 1.23 → 0.98 → 0.79</span></div>
+    <span class="say">Now it slides down the bowl and slows as it nears the bottom.</span>
+  </div>
+
+  <div class="figure">
+    <svg width="560" height="200" viewBox="0 0 560 200">
+      <line x1="48" y1="164" x2="520" y2="164" stroke="#e7e3da"/>
+      <line x1="48" y1="22"  x2="48"  y2="164" stroke="#e7e3da"/>
+      <polyline fill="none" stroke="#b4531f" stroke-width="2.5"
+        points="48,32 142,104 236,134 330,150 424,158 518,161"/>
+      <circle cx="48" cy="32" r="4" fill="#b4531f"/><circle cx="142" cy="104" r="4" fill="#b4531f"/>
+      <circle cx="236" cy="134" r="4" fill="#b4531f"/><circle cx="330" cy="150" r="4" fill="#b4531f"/>
+      <circle cx="424" cy="158" r="4" fill="#b4531f"/><circle cx="518" cy="161" r="4" fill="#b4531f"/>
+      <text x="52" y="18" font-size="12" fill="#5b6470" font-family="Inter,sans-serif">f(x)</text>
+      <text x="470" y="186" font-size="12" fill="#5b6470" font-family="Inter,sans-serif">steps</text>
+    </svg>
+    <div class="cap">The same algorithm, same derivative — only the step size changed.</div>
+  </div>
+
+  <p class="angle">
+    <span class="lbl">Second angle — same fact, algebraically</span>
+    Substitute the derivative in: <code>x ← x − lr·2x = (1 − 2·lr)x</code>. That's a geometric
+    sequence with ratio <code>(1 − 2·lr)</code>. At <code>lr=1.0</code> the ratio is <code>−1</code>
+    — it can only flip sign forever. At <code>lr=0.1</code> the ratio is <code>0.8</code> — it
+    shrinks every step. The picture above and this one line of algebra are the same fact, seen
+    two ways.
+  </p>
+
+  <p class="pull">The only thing between "bounces forever" and "finds the minimum" was the size of the step. That single knob is the learning rate.</p>
+
+  <p>And notice it slows down on its own: as <code>x</code> shrinks, the slope <code>2x</code> shrinks with it, so the steps shorten near the answer without any extra rule. The descent self-brakes.</p>
+
+  <div class="rebuild">
+    <h2>Could you rebuild it?</h2>
+    <p>On a blank page, with no notes: why did <code>lr=1.0</code> bounce but <code>lr=0.1</code> descend?</p>
+    <p>And what's the largest <code>lr</code> that still converges? Don't reason it out — change one thing and look.</p>
+  </div>
+
+  <hr class="rule">
+  <p class="foot">Derived from first principles in class · ask the teacher to push any step further.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gradient Descent — Çengel style</title>
+<style>
+  :root {
+    --teal:#0b6e8f; --teal-dark:#085469; --teal-soft:#e3f1f6; --teal-line:#bfe0ea;
+    --orange:#e08a1e; --orange-soft:#fdf3e2; --red:#c0392b;
+    --ink:#1c2a30; --muted:#5a6b72; --paper:#fffdf8; --rule:#e2e6e3;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Iowan Old Style", Georgia, "Times New Roman", serif; font-size:17px; line-height:1.6; }
+  .page { max-width:960px; margin:0 auto; padding:0 28px 80px; }
+
+  /* chapter opener banner */
+  .opener { background:linear-gradient(120deg,var(--teal),var(--teal-dark)); color:#fff;
+    border-radius:0 0 14px 14px; padding:34px 34px 28px; margin-bottom:8px; }
+  .opener .cnum { font-family:"Source Sans Pro",system-ui,sans-serif; font-weight:700; font-size:13px;
+    letter-spacing:.2em; opacity:.85; }
+  .opener h1 { font-family:"Source Sans Pro",system-ui,sans-serif; font-size:36px; margin:6px 0 4px; }
+  .opener .sub { font-style:italic; opacity:.92; margin:0; }
+
+  /* objectives */
+  .objectives { background:var(--teal-soft); border:1px solid var(--teal-line); border-radius:10px;
+    padding:16px 22px; margin:22px 0 8px; }
+  .objectives h2 { margin:0 0 8px; color:var(--teal-dark); font-size:15px; letter-spacing:.06em;
+    text-transform:uppercase; font-family:"Source Sans Pro",system-ui,sans-serif; }
+  .objectives ul { margin:0; padding-left:20px; } .objectives li { margin:4px 0; }
+
+  /* two-column body with margin notes */
+  .body { display:grid; grid-template-columns: 1fr 220px; gap:34px; margin-top:26px; }
+  .main { min-width:0; }
+  .margin { font-family:"Source Sans Pro",system-ui,sans-serif; }
+  .mnote { border-left:3px solid var(--orange); background:var(--orange-soft); padding:10px 12px;
+    border-radius:0 8px 8px 0; font-size:13.5px; line-height:1.5; color:#6a4a16; margin:0 0 22px; }
+  .mnote b { color:var(--red); }
+
+  h2.sec { font-family:"Source Sans Pro",system-ui,sans-serif; color:var(--teal-dark); font-size:22px;
+    margin:34px 0 12px; }
+  h2.sec .n { color:var(--orange); margin-right:8px; }
+  p { margin:0 0 16px; }
+  figure { margin:20px 0; text-align:center; }
+  figure svg { width:100%; max-width:440px; border:1px solid var(--rule); background:#fff; border-radius:8px; }
+  figcaption { font-size:13.5px; color:var(--muted); margin-top:8px; }
+  figcaption b { color:var(--teal-dark); }
+
+  /* key equation — Çengel's color-boxed formula */
+  .keyeq { background:var(--teal-soft); border:1.5px solid var(--teal); border-radius:10px;
+    display:flex; align-items:center; justify-content:center; gap:16px; padding:16px 22px; margin:22px 0; }
+  .keyeq .eq { font-size:23px; font-family:"Cambria Math",Georgia,serif; color:var(--teal-dark); }
+  .keyeq .num { color:var(--teal); font-family:"Source Sans Pro",system-ui,sans-serif; font-weight:700; }
+
+  /* worked example */
+  .example { border:1px solid var(--teal-line); border-radius:10px; margin:24px 0; overflow:hidden; }
+  .example .eh { background:var(--teal); color:#fff; padding:9px 18px;
+    font-family:"Source Sans Pro",system-ui,sans-serif; }
+  .example .eh b { letter-spacing:.1em; font-size:12px; }
+  .example .eh h3 { margin:2px 0 0; font-size:18px; }
+  .example .eb { padding:14px 18px; }
+  .example h4 { margin:12px 0 4px; color:var(--teal-dark); font-size:14px;
+    font-family:"Source Sans Pro",system-ui,sans-serif; text-transform:uppercase; letter-spacing:.05em; }
+
+  /* summary block */
+  .summary { background:#f3f7f5; border-top:3px solid var(--teal); border-radius:0 0 10px 10px;
+    padding:18px 22px; margin:30px 0; }
+  .summary h2 { color:var(--teal-dark); margin:0 0 8px; font-family:"Source Sans Pro",system-ui,sans-serif; }
+  .summary ul { margin:0; padding-left:20px; } .summary li { margin:6px 0; }
+
+  ol.prob { padding-left:20px; } ol.prob li { margin:8px 0; }
+  .q { color:var(--orange); font-weight:700; font-family:"Source Sans Pro",system-ui,sans-serif; margin-right:6px; }
+  footer { margin-top:30px; padding-top:16px; border-top:1px solid var(--rule); font-size:14px; color:var(--muted); }
+  footer a { color:var(--teal); }
+  @media (max-width:760px){ .body { grid-template-columns:1fr; } .margin { order:2; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="opener">
+    <div class="cnum">CHAPTER 1 · OPTIMIZATION</div>
+    <h1>Gradient Descent</h1>
+    <p class="sub">Finding the bottom of a valley you cannot see all at once.</p>
+  </header>
+
+  <section class="objectives">
+    <h2>Objectives</h2>
+    <ul>
+      <li>Read the gradient as the local uphill direction on a loss surface.</li>
+      <li>Apply the gradient-descent update rule to step toward a minimum.</li>
+      <li>Anticipate how the learning rate controls convergence and divergence.</li>
+    </ul>
+  </section>
+
+  <div class="body">
+    <div class="main">
+      <h2 class="sec"><span class="n">1–1</span>The Descent Picture</h2>
+      <p>Imagine standing on the wall of a valley in thick fog. You cannot see the bottom, but you can
+      feel the slope under your feet. The <em>gradient</em> &nabla;L points in the direction the ground
+      rises most steeply; to go lower, you simply walk the opposite way. How far you stride each time is
+      set by the learning rate, η.</p>
+      <figure>
+        <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40,30 Q200,300 360,30" fill="none" stroke="#0b6e8f" stroke-width="2.5"/>
+          <g fill="#e08a1e">
+            <circle cx="88" cy="99" r="5.5"/><circle cx="129" cy="139" r="5.5"/>
+            <circle cx="168" cy="160" r="5.5"/><circle cx="200" cy="165" r="5.5"/>
+          </g>
+          <g stroke="#e08a1e" stroke-width="1.6" fill="none">
+            <path d="M88,99 L129,139" marker-end="url(#a)"/>
+            <path d="M129,139 L168,160" marker-end="url(#a)"/>
+            <path d="M168,160 L200,165" marker-end="url(#a)"/>
+          </g>
+          <defs><marker id="a" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 z" fill="#e08a1e"/></marker></defs>
+          <text x="206" y="182" font-size="11" fill="#5a6b72">minimum</text>
+        </svg>
+        <figcaption><b>FIGURE 1–1</b> &nbsp;Each step descends the valley; strides shorten as the
+        slope flattens near the minimum.</figcaption>
+      </figure>
+
+      <h2 class="sec"><span class="n">1–2</span>The Update Rule</h2>
+      <p>Stripped to its core, the method is a single rule applied over and over: move the parameter
+      against the gradient, scaled by the learning rate.</p>
+      <div class="keyeq">
+        <span class="eq">θ &larr; θ &minus; η &middot; &nabla;L(θ)</span>
+        <span class="num">(1–1)</span>
+      </div>
+      <p>The character of the whole process lives in η. Too large, and each stride leaps clear across
+      the valley and the loss diverges; too small, and you inch downward for far too long.</p>
+
+      <article class="example">
+        <div class="eh"><b>EXAMPLE 1–1</b><h3>Choosing the Stride</h3></div>
+        <div class="eb">
+          <h4>Problem</h4>
+          <p>A parameter sits on a steep valley wall. Describe what happens to the descent if the
+          learning rate is doubled, then doubled again.</p>
+          <h4>Analysis</h4>
+          <p>Doubling η lengthens every stride. While the slope is steep this speeds descent, but once
+          strides exceed the valley’s width the iterate overshoots to the opposite wall — and a second
+          doubling tips the sequence into divergence.</p>
+          <h4>Comment</h4>
+          <p>There is a largest stable learning rate set by the surface’s curvature; the art is to ride
+          just beneath it.</p>
+        </div>
+      </article>
+    </div>
+
+    <aside class="margin">
+      <div class="mnote">The <b>gradient</b> always points <b>uphill</b>. Descent just means going the
+      other way.</div>
+      <div class="mnote">The learning rate η is the <b>single most important</b> knob — it decides
+      converge vs. diverge.</div>
+      <div class="mnote">Steps naturally <b>shrink</b> near the minimum because the slope itself
+      shrinks.</div>
+    </aside>
+  </div>
+
+  <section class="summary">
+    <h2>Summary</h2>
+    <ul>
+      <li>Gradient descent steps opposite the slope, by an amount set by η, until the surface is flat.</li>
+      <li>It requires a computable gradient and a reasonably smooth surface.</li>
+      <li>The learning rate governs everything: too small is slow, too large diverges.</li>
+    </ul>
+  </section>
+
+  <h2 class="sec"><span class="n">1–3</span>Problems</h2>
+  <ol class="prob">
+    <li><span class="q">1–1</span>Triple η and find the threshold at which the iterate overshoots.</li>
+    <li><span class="q">1–2</span>Add a momentum term and describe how the descent path changes.</li>
+    <li><span class="q">1–3</span>Explain η to a beginner using only the foggy-valley picture.</li>
+  </ol>
+
+  <footer><strong>Primary source:</strong>
+    <a href="#">3Blue1Brown — “Gradient descent, how neural networks learn.”</a><br>
+    Unclear on anything? Ask your teacher — that is what I am here for.</footer>
+</div>
+</body>
+</html>
